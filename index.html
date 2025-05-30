@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>cam-gal Demo</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .preview-container { margin: 15px 0; padding: 15px; border: 1px dashed #dee2e6; border-radius: 8px; min-height: 100px; background: white; }
+        .preview-images { display: flex; flex-wrap: wrap; gap: 10px; }
+        .preview-item { position: relative; width: 100px; height: 100px; }
+        .preview-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+        .camera-video.front-camera { transform: scaleX(-1); }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <h1 class="text-center mb-4">cam-gal Plugin Demo</h1>
+        
+        <!-- Single Image Example -->
+        <div class="card mb-4">
+            <div class="card-header">Front View (Single)</div>
+            <div class="card-body">
+                <button type="button" class="btn btn-primary"
+                    data-cg-name="front"
+                    data-cg-multiple="false"
+                    data-cg-frame="true"
+                    data-cg-preview="true">
+                    <i class="bi bi-camera me-2"></i>Take Front Photo
+                </button>
+                <input type="text" name="front">
+            </div>
+        </div>
+        
+        <!-- Multiple Images Example -->
+        <div class="card">
+            <div class="card-header">Interior View (Multiple)</div>
+            <div class="card-body">
+                <button type="button" class="btn btn-primary"
+                    data-cg-name="interior"
+                    data-cg-multiple="true"
+                    data-cg-frame="false"
+                    data-cg-preview="true">
+                    <i class="bi bi-camera me-2"></i>Add Interior Photos
+                </button>
+                <input type="text" name="interior">
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Plugin -->
+    <script src="jquery.cam-gal.js"></script>
+    
+    <script>
+    $(document).ready(function() {
+        // Initialize plugin on all buttons with data-cg-name
+        $('button[data-cg-name]').camGal({
+            framePath: 'frames/' // Path to your frame images
+        });
+        
+        // Update previews when hidden inputs change
+        $('input[type="hidden"][name]').on('change', function() {
+            const name = $(this).attr('name');
+            const $preview = $(this).siblings('.preview-container').find('.preview-images');
+            const value = $(this).val();
+            let images = [];
+            
+            if(value) {
+                try {
+                    images = JSON.parse(value);
+                    if(!Array.isArray(images)) images = [images];
+                } catch(e) {
+                    images = [value];
+                }
+            }
+            
+            $preview.empty();
+            images.forEach(img => {
+                $preview.append(`
+                    <div class="preview-item">
+                        <img src="${img}" class="img-thumbnail">
+                    </div>
+                `);
+            });
+        }).trigger('change');
+    });
+    </script>
+</body>
+</html>
