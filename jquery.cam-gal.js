@@ -117,6 +117,19 @@
                     </div>
                 </div>
             </div>`;
+
+            // Add style for front camera mirroring if not present
+    if (!$('#cam-gal-front-camera-style').length) {
+        const css = `
+            #cam-gal-modal .front-camera {
+                transform: scaleX(-1);
+            }
+        `;
+        $('head').append($('<style>', {
+            id: 'cam-gal-front-camera-style',
+            text: css
+        }));
+    }
             
             $('body').append(modalHTML);
             
