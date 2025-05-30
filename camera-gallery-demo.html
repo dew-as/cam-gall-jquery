@@ -51,6 +51,26 @@
       transform: scaleX(-1);
     }
     
+    /* Frame overlay */
+    .frame-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: contain;
+      background-position: center;
+      background-repeat: no-repeat;
+      pointer-events: none;
+      z-index: 2;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .frame-overlay.visible {
+      opacity: 1;
+    }
+    
     .camera-controls { 
       position: fixed;
       bottom: 30px;
@@ -198,6 +218,7 @@
     
     <div class="camera-video-container">
       <video class="camera-video" autoplay playsinline></video>
+      <div class="frame-overlay"></div>
       <div class="permission-denied">
         <i class="bi bi-camera-video-off" style="font-size: 3rem; margin-bottom: 1rem;"></i>
         <h3>Camera Access Denied</h3>
@@ -240,6 +261,15 @@
       const inputName = currentInput.data('cg-name') || 'camera';
       const multiple = currentInput.data('cg-multiple') || false;
       const frame = currentInput.data('cg-frame') || false;
+      
+      // Set frame if specified
+      const $frameOverlay = $('.frame-overlay');
+      $frameOverlay.removeClass('visible');
+      
+      if (frame && inputName) {
+        const framePath = `frames/${inputName}.png`;
+        $frameOverlay.css('background-image', `url(${framePath})`).addClass('visible');
+      }
       
       $('#currentInputName').val(inputName);
       $('#currentMultiple').val(multiple);
@@ -288,6 +318,19 @@
       
       // Store whether we're using front camera for mirroring
       window.isFrontCamera = newFacingMode === 'user';
+      
+      // Reapply frame after camera switch
+      if (currentInput) {
+        const inputName = currentInput.data('cg-name');
+        const frame = currentInput.data('cg-frame');
+        const $frameOverlay = $('.frame-overlay');
+        $frameOverlay.removeClass('visible');
+        
+        if (frame && inputName) {
+          const framePath = `frames/${inputName}.png`;
+          $frameOverlay.css('background-image', `url(${framePath})`).addClass('visible');
+        }
+      }
       
       // Stop all tracks
       stopCamera().then(() => {
