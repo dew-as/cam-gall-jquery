@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Camera Gallery Demo</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <style>
+    body { padding: 20px; background-color: #f8f9fa; }
+    .camera-section { margin-bottom: 30px; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .preview-container { margin: 15px 0; padding: 15px; border: 1px dashed #dee2e6; border-radius: 8px; min-height: 100px; }
+    .preview-images { display: flex; flex-wrap: wrap; gap: 10px; }
+    .preview-item { position: relative; width: 120px; height: 120px; }
+    .preview-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+    .btn-camera { margin: 5px; min-width: 200px; }
+    .camera-interface, .gallery-interface, .preview-container, .camera-options { display: none; }
+    .camera-video-container { position: relative; width: 100%; padding-top: 75%; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 15px; }
+    .camera-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+    .frame-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; z-index: 2; }
+    .camera-controls { display: flex; justify-content: center; gap: 20px; margin-top: 15px; }
+    .capture-btn { width: 60px; height: 60px; border-radius: 50%; font-size: 24px; display: flex; align-items: center; justify-content: center; }
+  </style>
+</head>
+<body>
+  <div class="container py-4">
+    <h1 class="text-center mb-4">Vehicle Inspection</h1>
+    
+    <!-- Front View -->
+    <div class="camera-section">
+      <h4>Front View</h4>
+      <button class="btn btn-primary btn-camera"
+              data-cg-name="front-view"
+              data-cg-multiple="false"
+              data-cg-frame="true"
+              data-cg-preview="true">
+        <i class="bi bi-camera me-2"></i>Take Front Photo
+      </button>
+      <input type="text" name="front-view">
+      <div class="preview-container" id="front-view-preview">
+        <div class="preview-images"></div>
+      </div>
+    </div>
+
+    <!-- Interior View -->
+    <div class="camera-section">
+      <h4>Interior View</h4>
+      <button class="btn btn-primary btn-camera"
+              data-cg-name="interior"
+              data-cg-multiple="true"
+              data-cg-frame="false"
+              data-cg-preview="true">
+        <i class="bi bi-camera me-2"></i>Add Interior Photos
+      </button>
+      <input type="text" name="interior">
+      <div class="preview-container" id="interior-preview">
+        <div class="preview-images"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Camera Modal -->
+  <div id="cameraModal" class="modal" tabindex="-1" style="display: none;">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Photo</h5>
+          <button type="button" class="btn-close close-modal" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <div class="camera-options">
+            <button class="btn btn-outline-primary me-2 use-camera">
+              <i class="bi bi-camera me-2"></i>Use Camera
+            </button>
+            <button class="btn btn-outline-secondary use-gallery">
+              <i class="bi bi-images me-2"></i>Choose from Gallery
+            </button>
+          </div>
+          
+          <div class="camera-interface">
+            <div class="camera-video-container">
+              <video class="camera-video" autoplay playsinline></video>
+              <img class="frame-overlay" src="" alt="Frame Overlay">
+            </div>
+            <div class="camera-controls">
+              <button class="btn btn-sm btn-light switch-camera" title="Switch Camera">
+                <i class="bi bi-camera-reverse"></i>
+              </button>
+              <button class="btn btn-primary btn-circle capture-btn" title="Take Photo">
+                <i class="bi bi-camera"></i>
+              </button>
+              <button class="btn btn-sm btn-light back-to-options" title="Back to Options">
+                <i class="bi bi-arrow-left"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="gallery-interface">
+            <input type="file" class="gallery-input" accept="image/*" multiple>
+            <div class="gallery-preview"></div>
+            <button class="btn btn-secondary back-to-options mt-3">
+              <i class="bi bi-arrow-left me-2"></i>Back to Options
+            </button>
+          </div>
+          
+          <div class="preview-container mt-3">
+            <div class="preview-images"></div>
+            <button class="btn btn-success confirm-selection mt-3">
+              <i class="bi bi-check-lg me-2"></i>Confirm Selection
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Camera Module -->
+  <script src="jquery.camera-module.js"></script>
+  
+  <script>
+  $(document).ready(function() {
+    // Initialize camera gallery
+    $('.btn-camera').cameraGallery({
+      framePath: 'frames/',
+      onCapture: function(images, inputName) {
+        console.log('Captured images:', images);
+        console.log('Input name:', inputName);
+        
+        // Update the preview
+        const $preview = $(`#${inputName}-preview .preview-images`);
+        $preview.empty();
+        
+        images.forEach((img, index) => {
+          const $img = $(`
+            <div class="preview-item">
+              <img src="${img}" class="img-thumbnail">
+              <button class="btn btn-danger btn-sm remove-image" data-index="${index}">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
+          `);
+          $preview.append($img);
+        });
+      }
+    });
+  });
+  </script>
+</body>
+</html>

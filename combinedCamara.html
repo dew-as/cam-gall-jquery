@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vehicle Inspection - Camera</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+    .camera-section {
+      margin-bottom: 30px;
+    }
+    .preview-container {
+      position: relative;
+      display: inline-block;
+      margin: 10px 0;
+    }
+    .preview-container img {
+      max-width: 200px;
+      max-height: 150px;
+      border: 2px solid #dee2e6;
+      border-radius: 8px;
+    }
+    .remove-image {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .camera-preview {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      overflow: hidden;
+    }
+    .camera-video-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .camera-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* Mirror the video for front camera */
+    }
+    .frame-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 90%;
+      max-height: 90%;
+      pointer-events: none;
+      z-index: 2;
+      transition: all 0.3s ease;
+    }
+    .camera-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 15px;
+      display: flex;
+      justify-content: flex-end;
+      z-index: 1002;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    .camera-controls {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 40px;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1002;
+      backdrop-filter: blur(5px);
+    }
+    
+    .camera-controls .btn-circle {
+      width: 70px;
+      height: 70px;
+      font-size: 28px;
+    }
+    
+    .camera-controls .btn-sm {
+      padding: 0.5rem 1rem;
+      font-size: 1.1rem;
+    }
+    .btn-circle {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      background: rgba(255, 255, 255, 0.9);
+      border: none;
+      color: #333;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+    
+    .btn-circle:active {
+      transform: scale(0.95);
+    }
+    .camera-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+    .camera-content {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .btn-close-white {
+      filter: invert(1) grayscale(100%) brightness(200%);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="text-center my-4">Vehicle Inspection</h1>
+    
+    <div class="row">
+      <!-- Front View -->
+      <div class="col-md-6 mb-4">
+        <div class="card h-100">
+          <div class="card-body text-center">
+            <h5 class="card-title">Front View</h5>
+            <div class="camera-section">
+              <div id="frontView" class="mb-3">
+                <!-- Preview will be added here -->
+              </div>
+              <button class="btn btn-primary camera-trigger" 
+                      data-preview-id="frontView"
+                      data-frame-type="front-view"
+                      data-orientation="landscape"
+                      data-no-frame="false">
+                <i class="bi bi-camera me-2"></i>Take Photo
+              </button>
+              <input type="hidden" id="frontView-input" name="front_image">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Back View -->
+      <div class="col-md-6 mb-4">
+        <div class="card h-100">
+          <div class="card-body text-center">
+            <h5 class="card-title">Interior View</h5>
+            <div class="camera-section">
+              <div id="Interior" class="mb-3">
+                <!-- Preview will be added here -->
+              </div>
+              <button class="btn btn-primary camera-trigger" 
+                      data-preview-id="Interior"
+                      data-frame-type="interior"
+                      data-orientation="landscape"
+                      data-no-frame="false">
+                <i class="bi bi-camera me-2"></i>Take Photo
+              </button>
+              <input type="hidden" id="Interior-input" name="interior_image">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Left Side View -->
+      <div class="col-md-6 mb-4">
+        <div class="card h-100">
+          <div class="card-body text-center">
+            <h5 class="card-title">Left Side View</h5>
+            <div class="camera-section">
+              <div id="leftView" class="mb-3">
+                <!-- Preview will be added here -->
+              </div>
+              <button class="btn btn-primary camera-trigger" 
+                      data-preview-id="leftView"
+                      data-frame-type="lhside-view"
+                      data-orientation="portrait">
+                <i class="bi bi-camera me-2"></i>Take Photo
+              </button>
+              <input type="hidden" id="leftView-input" name="left_image">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Side View -->
+      <div class="col-md-6 mb-4">
+        <div class="card h-100">
+          <div class="card-body text-center">
+            <h5 class="card-title">Right Side View</h5>
+            <div class="camera-section">
+              <div id="rightView" class="mb-3">
+                <!-- Preview will be added here -->
+              </div>
+              <button class="btn btn-primary camera-trigger" 
+                      data-preview-id="rightView"
+                      data-frame-type="rhside-view"
+                      data-orientation="portrait">
+                <i class="bi bi-camera me-2"></i>Take Photo
+              </button>
+              <input type="hidden" id="rightView-input" name="right_image">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- No Frame Test -->
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title">No Frame Test</h5>
+          <div class="camera-section">
+            <div id="noFrameTest" class="mb-3">
+              <!-- Preview will be added here -->
+            </div>
+            <button class="btn btn-primary camera-trigger" 
+                    data-preview-id="noFrameTest"
+                    data-frame-type="no-frame"
+                    data-orientation="landscape"
+                    data-no-frame="true">
+              <i class="bi bi-camera me-2"></i>Take Photo (No Frame)
+            </button>
+            <input type="hidden" id="noFrameTest-input" name="no_frame_image">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Camera Modal -->
+  <div id="cameraModal" class="modal" tabindex="-1" style="display: none;">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Photo</h5>
+          <button type="button" class="btn-close close-modal" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <div class="camera-options mb-3" style="display: none;">
+            <button class="btn btn-outline-primary me-2 use-camera">
+              <i class="bi bi-camera me-2"></i>Use Camera
+            </button>
+            <button class="btn btn-outline-secondary use-gallery">
+              <i class="bi bi-images me-2"></i>Choose from Gallery
+            </button>
+          </div>
+          
+          <div class="camera-interface" style="display: none;">
+            <div class="camera-preview mb-3">
+              <div class="camera-video-container" style="position: relative; width: 100%; padding-top: 75%;">
+                <video class="camera-video" autoplay playsinline style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;"></video>
+                <img class="frame-overlay" src="" alt="Frame Overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; display: none; pointer-events: none;">
+              </div>
+            </div>
+            <div class="camera-controls">
+              <button class="btn btn-sm btn-light switch-camera" title="Switch Camera">
+                <i class="bi bi-camera-reverse"></i>
+              </button>
+              <button class="btn btn-primary btn-circle capture-btn" title="Take Photo">
+                <i class="bi bi-camera"></i>
+              </button>
+              <button class="btn btn-sm btn-light back-to-options" title="Back to Options">
+                <i class="bi bi-arrow-left"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="gallery-interface" style="display: none;">
+            <input type="file" class="gallery-input" accept="image/*" style="display: none;" multiple>
+            <div class="gallery-preview"></div>
+            <button class="btn btn-secondary back-to-options mt-3">
+              <i class="bi bi-arrow-left me-2"></i>Back to Options
+            </button>
+          </div>
+          
+          <div class="preview-container mt-3" style="display: none;">
+            <div class="preview-images"></div>
+            <button class="btn btn-success confirm-selection mt-3">
+              <i class="bi bi-check-lg me-2"></i>Confirm Selection
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  
+  <!-- Bootstrap JS and Popper.js -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- jQuery Camera Module Plugin -->
+  <script src="jquery.camera-module.js"></script>
+  
+  <!-- Initialize Camera Module -->
+  <script>
+    $(document).ready(function() {
+      // Wait for all resources to be loaded
+      $(window).on('load', function() {
+        // Initialize camera module on the modal element
+        $('#cameraModal').cameraModule({
+          // Frame files configuration
+          frameFiles: {
+            'front-view': 'front-view.png',
+            'interior': 'interior.png',
+            'lhside-view': 'lhside-view.png',
+            'rhside-view': 'rhside-view.png'
+          },
+          // Base path for frame images (update this to your frames directory)
+          frameBasePath: '',
+          // Default camera mode
+          defaultFacingMode: 'environment',
+          // Callbacks
+          onCapture: function(imageData, previewId) {
+            console.log('Image captured for:', previewId);
+            // Find the preview container and update it
+            const $preview = $('#' + previewId);
+            if ($preview.length) {
+              $preview.html(
+                '<div class="preview-container">' +
+                '  <img src="' + imageData + '" alt="Preview" class="img-fluid">' +
+                '  <button class="remove-image">×</button>' +
+                '</div>'
+              );
+              
+              // Update the corresponding hidden input
+              $('#' + previewId + '-input').val(imageData);
+              
+              // Add click handler for remove button
+              $preview.find('.remove-image').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $preview.empty();
+                $('#' + previewId + '-input').val('');
+              });
+            }
+          },
+          onError: function(errorType, message) {
+            console.error(errorType, message);
+            // Show user-friendly error message
+            if (errorType === 'camera_access_error') {
+              alert('Camera Error: ' + message);
+            } else {
+              alert('Error: ' + message);
+            }
+          },
+          onClose: function() {
+            console.log('Camera closed');
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
