@@ -197,6 +197,34 @@
     </div>
   </div>
 
+  <!-- Camera/Gallery Selection Modal -->
+  <div class="modal fade" id="cameraSelectionModal" tabindex="-1" aria-labelledby="cameraSelectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="cameraSelectionModalLabel">Select Source</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <div class="row g-3">
+            <div class="col-6">
+              <button type="button" class="btn btn-outline-primary w-100 py-4" id="useCameraBtn">
+                <i class="bi bi-camera-fill d-block mb-2" style="font-size: 2rem;"></i>
+                Camera
+              </button>
+            </div>
+            <div class="col-6">
+              <button type="button" class="btn btn-outline-secondary w-100 py-4" id="useGalleryBtn">
+                <i class="bi bi-images d-block mb-2" style="font-size: 2rem;"></i>
+                Gallery
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Full-screen Camera Interface -->
   <div id="fullscreenCamera">
     <div class="camera-top-bar">
@@ -254,7 +282,7 @@
     let capturedImages = [];
     let currentInput = null;
     
-    // Show camera when camera button is clicked
+    // Show camera/gallery selection modal when camera button is clicked
     $(document).on('click', '.btn-camera', function(e) {
       e.preventDefault();
       currentInput = $(this);
@@ -262,21 +290,41 @@
       const multiple = currentInput.data('cg-multiple') || false;
       const frame = currentInput.data('cg-frame') || false;
       
+      // Store the input data in the modal for later use
+      $('#cameraSelectionModal').data('input-data', {
+        inputName: inputName,
+        multiple: multiple,
+        frame: frame
+      });
+      
+      // Show the selection modal
+      const modal = new bootstrap.Modal(document.getElementById('cameraSelectionModal'));
+      modal.show();
+    });
+    
+    // Handle camera selection
+    $(document).on('click', '#useCameraBtn', function() {
+      const modal = bootstrap.Modal.getInstance(document.getElementById('cameraSelectionModal'));
+      const inputData = $('#cameraSelectionModal').data('input-data');
+      
       // Set frame if specified
       const $frameOverlay = $('.frame-overlay');
       $frameOverlay.removeClass('visible');
       
-      if (frame && inputName) {
-        const framePath = `frames/${inputName}.png`;
+      if (inputData.frame && inputData.inputName) {
+        const framePath = `frames/${inputData.inputName}.png`;
         $frameOverlay.css('background-image', `url(${framePath})`).addClass('visible');
       }
       
-      $('#currentInputName').val(inputName);
-      $('#currentMultiple').val(multiple);
-      $('#currentFrame').val(frame);
+      $('#currentInputName').val(inputData.inputName);
+      $('#currentMultiple').val(inputData.multiple);
+      $('#currentFrame').val(inputData.frame);
       
       // Reset captured images for new session
       capturedImages = [];
+      
+      // Hide the selection modal
+      modal.hide();
       
       // Show fullscreen camera
       $('#fullscreenCamera').fadeIn();
@@ -284,6 +332,63 @@
       
       // Initialize camera
       initCamera();
+    });
+    
+    // Handle gallery selection
+    $(document).on('click', '#useGalleryBtn', function() {
+      const modal = bootstrap.Modal.getInstance(document.getElementById('cameraSelectionModal'));
+      const inputData = $('#cameraSelectionModal').data('input-data');
+      
+      // Hide the selection modal
+      modal.hide();
+      
+      // Create a file input element
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.multiple = inputData.multiple;
+      
+      // Handle file selection
+      fileInput.onchange = function(e) {
+        const files = Array.from(e.target.files);
+        
+        // Convert files to data URLs and add to capturedImages
+        const promises = files.map(file => {
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+              resolve(event.target.result);
+            };
+            reader.readAsDataURL(file);
+          });
+        });
+        
+        Promise.all(promises).then(images => {
+          capturedImages = images;
+          
+          // Update the preview
+          const $preview = $(`#${inputData.inputName}-preview .preview-images`);
+          $preview.empty();
+          
+          capturedImages.forEach((img, index) => {
+            const $img = $(`
+              <div class="preview-item">
+                <img src="${img}" class="img-thumbnail">
+                <button class="btn btn-danger btn-sm remove-image" data-index="${index}">
+                  <i class="bi bi-x"></i>
+                </button>
+              </div>
+            `);
+            $preview.append($img);
+          });
+          
+          // Update hidden input
+          $(`input[name="${inputData.inputName}"]`).val(JSON.stringify(capturedImages));
+        });
+      };
+      
+      // Trigger the file input click
+      fileInput.click();
     });
     
     // Close camera
