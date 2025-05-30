@@ -2,26 +2,119 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Camera Gallery Demo</title>
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <!-- Bootstrap Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
   <style>
-    body { padding: 20px; background-color: #f8f9fa; }
-    .camera-section { margin-bottom: 30px; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .preview-container { margin: 15px 0; padding: 15px; border: 1px dashed #dee2e6; border-radius: 8px; min-height: 100px; }
+    body { margin: 0; padding: 0; background-color: #000; }
+    .camera-section { padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; }
+    .preview-container { margin: 15px 0; padding: 15px; border: 1px dashed #dee2e6; border-radius: 8px; min-height: 100px; background: white; }
     .preview-images { display: flex; flex-wrap: wrap; gap: 10px; }
-    .preview-item { position: relative; width: 120px; height: 120px; }
+    .preview-item { position: relative; width: 100px; height: 100px; }
     .preview-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
-    .btn-camera { margin: 5px; min-width: 200px; }
+    .btn-camera { margin: 5px 0; width: 100%; max-width: 300px; }
     .camera-interface, .gallery-interface, .preview-container, .camera-options { display: none; }
-    .camera-video-container { position: relative; width: 100%; padding-top: 75%; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 15px; }
-    .camera-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-    .frame-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; z-index: 2; }
-    .camera-controls { display: flex; justify-content: center; gap: 20px; margin-top: 15px; }
-    .capture-btn { width: 60px; height: 60px; border-radius: 50%; font-size: 24px; display: flex; align-items: center; justify-content: center; }
+    
+    /* Full-screen camera styles */
+    #fullscreenCamera { 
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      z-index: 1000;
+    }
+    
+    .camera-video-container { 
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+    
+    .camera-video { 
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .camera-controls { 
+      position: fixed;
+      bottom: 30px;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 40px;
+      z-index: 1002;
+    }
+    
+    .capture-btn { 
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      border: 4px solid white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    
+    .capture-btn:active {
+      transform: scale(0.95);
+    }
+    
+    .capture-btn i {
+      font-size: 30px;
+      color: white;
+    }
+    
+    .switch-camera, .close-camera {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.5);
+      border: none;
+      color: white;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    
+    .camera-top-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      z-index: 1001;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
+    }
+    
+    .permission-denied {
+      display: none;
+      color: white;
+      text-align: center;
+      padding: 20px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1003;
+    }
   </style>
 </head>
 <body>
@@ -61,60 +154,40 @@
     </div>
   </div>
 
-  <!-- Camera Modal -->
-  <div id="cameraModal" class="modal" tabindex="-1" style="display: none;">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Add Photo</h5>
-          <button type="button" class="btn-close close-modal" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body text-center">
-          <div class="camera-options">
-            <button class="btn btn-outline-primary me-2 use-camera">
-              <i class="bi bi-camera me-2"></i>Use Camera
-            </button>
-            <button class="btn btn-outline-secondary use-gallery">
-              <i class="bi bi-images me-2"></i>Choose from Gallery
-            </button>
-          </div>
-          
-          <div class="camera-interface">
-            <div class="camera-video-container">
-              <video class="camera-video" autoplay playsinline></video>
-              <img class="frame-overlay" src="" alt="Frame Overlay">
-            </div>
-            <div class="camera-controls">
-              <button class="btn btn-sm btn-light switch-camera" title="Switch Camera">
-                <i class="bi bi-camera-reverse"></i>
-              </button>
-              <button class="btn btn-primary btn-circle capture-btn" title="Take Photo">
-                <i class="bi bi-camera"></i>
-              </button>
-              <button class="btn btn-sm btn-light back-to-options" title="Back to Options">
-                <i class="bi bi-arrow-left"></i>
-              </button>
-            </div>
-          </div>
-          
-          <div class="gallery-interface">
-            <input type="file" class="gallery-input" accept="image/*" multiple>
-            <div class="gallery-preview"></div>
-            <button class="btn btn-secondary back-to-options mt-3">
-              <i class="bi bi-arrow-left me-2"></i>Back to Options
-            </button>
-          </div>
-          
-          <div class="preview-container mt-3">
-            <div class="preview-images"></div>
-            <button class="btn btn-success confirm-selection mt-3">
-              <i class="bi bi-check-lg me-2"></i>Confirm Selection
-            </button>
-          </div>
-        </div>
+  <!-- Full-screen Camera Interface -->
+  <div id="fullscreenCamera">
+    <div class="camera-top-bar">
+      <button class="btn btn-sm btn-light close-camera">
+        <i class="bi bi-x-lg"></i>
+      </button>
+      <div class="flash-effect"></div>
+    </div>
+    
+    <div class="camera-video-container">
+      <video class="camera-video" autoplay playsinline></video>
+      <div class="permission-denied">
+        <i class="bi bi-camera-video-off" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+        <h3>Camera Access Denied</h3>
+        <p>Please allow camera access to use this feature.</p>
+        <button class="btn btn-primary mt-2 retry-camera">Retry</button>
       </div>
     </div>
+    
+    <div class="camera-controls">
+      <button class="switch-camera" title="Switch Camera">
+        <i class="bi bi-camera-reverse"></i>
+      </button>
+      <div class="capture-btn" title="Take Photo">
+        <i class="bi bi-circle-fill"></i>
+      </div>
+      <div class="captured-photo-preview" style="display: none;"></div>
+    </div>
   </div>
+  
+  <!-- Hidden input for storing captured images -->
+  <input type="hidden" id="currentInputName">
+  <input type="hidden" id="currentMultiple">
+  <input type="hidden" id="currentFrame">
 
   <!-- jQuery -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -125,31 +198,233 @@
   
   <script>
   $(document).ready(function() {
-    // Initialize camera gallery
-    $('.btn-camera').cameraGallery({
-      framePath: 'frames/',
-      onCapture: function(images, inputName) {
-        console.log('Captured images:', images);
-        console.log('Input name:', inputName);
+    let stream = null;
+    let currentDeviceId = null;
+    let capturedImages = [];
+    let currentInput = null;
+    
+    // Show camera when camera button is clicked
+    $(document).on('click', '.btn-camera', function(e) {
+      e.preventDefault();
+      currentInput = $(this);
+      const inputName = currentInput.data('cg-name') || 'camera';
+      const multiple = currentInput.data('cg-multiple') || false;
+      const frame = currentInput.data('cg-frame') || false;
+      
+      $('#currentInputName').val(inputName);
+      $('#currentMultiple').val(multiple);
+      $('#currentFrame').val(frame);
+      
+      // Reset captured images for new session
+      capturedImages = [];
+      
+      // Show fullscreen camera
+      $('#fullscreenCamera').fadeIn();
+      $('body').css('overflow', 'hidden');
+      
+      // Initialize camera
+      initCamera();
+    });
+    
+    // Close camera
+    $(document).on('click', '.close-camera', function() {
+      stopCamera();
+      $('#fullscreenCamera').fadeOut();
+      $('body').css('overflow', '');
+    });
+    
+    // Retry camera access
+    $(document).on('click', '.retry-camera', function() {
+      $('.permission-denied').hide();
+      initCamera();
+    });
+    
+    // Switch camera
+    $(document).on('click', '.switch-camera', function() {
+      stopCamera().then(() => {
+        currentDeviceId = currentDeviceId ? null : 'environment';
+        initCamera();
+      });
+    });
+    
+    // Capture photo
+    $(document).on('click', '.capture-btn', function() {
+      if ($(this).hasClass('disabled')) return;
+      
+      const video = $('.camera-video')[0];
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      
+      // Draw the current frame from the video onto the canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Convert canvas to data URL
+      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      capturedImages.push(imageDataUrl);
+      
+      // Show flash effect
+      $('.flash-effect').addClass('active');
+      setTimeout(() => $('.flash-effect').removeClass('active'), 200);
+      
+      // If multiple is not allowed, save and close
+      const multiple = $('#currentMultiple').val() === 'true';
+      if (!multiple) {
+        saveAndClose();
+      } else {
+        // Show preview for multiple images
+        updatePreview();
+      }
+    });
+    
+    // Save and close camera
+    function saveAndClose() {
+      const inputName = $('#currentInputName').val();
+      const $preview = $(`#${inputName}-preview .preview-images`);
+      $preview.empty();
+      
+      // Update preview with captured images
+      capturedImages.forEach((img, index) => {
+        const $img = $(`
+          <div class="preview-item">
+            <img src="${img}" class="img-thumbnail">
+            <button class="btn btn-danger btn-sm remove-image" data-index="${index}">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
+        `);
+        $preview.append($img);
+      });
+      
+      // Update hidden input if exists
+      $(`input[name="${inputName}"]`).val(JSON.stringify(capturedImages));
+      
+      // Close camera
+      stopCamera().then(() => {
+        $('#fullscreenCamera').fadeOut();
+        $('body').css('overflow', '');
+      });
+    }
+    
+    // Update preview for multiple images
+    function updatePreview() {
+      const $preview = $('.captured-photo-preview');
+      $preview.empty();
+      
+      capturedImages.forEach((img, index) => {
+        $preview.append(`
+          <div class="preview-item" style="width: 50px; height: 50px; display: inline-block; margin: 0 5px;">
+            <img src="${img}" style="width: 100%; height: 100%; object-fit: cover; border: 2px solid #fff; border-radius: 4px;">
+          </div>
+        `);
+      });
+      
+      if (capturedImages.length > 0) {
+        $preview.show();
+      } else {
+        $preview.hide();
+      }
+    }
+    
+    // Initialize camera
+    async function initCamera() {
+      try {
+        const constraints = {
+          video: {
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            facingMode: currentDeviceId || 'environment',
+            deviceId: currentDeviceId ? { exact: currentDeviceId } : undefined
+          },
+          audio: false
+        };
         
-        // Update the preview
-        const $preview = $(`#${inputName}-preview .preview-images`);
-        $preview.empty();
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        const video = $('.camera-video')[0];
+        video.srcObject = stream;
         
-        images.forEach((img, index) => {
-          const $img = $(`
-            <div class="preview-item">
-              <img src="${img}" class="img-thumbnail">
-              <button class="btn btn-danger btn-sm remove-image" data-index="${index}">
-                <i class="bi bi-x"></i>
-              </button>
-            </div>
-          `);
-          $preview.append($img);
-        });
+        // Handle iOS 11+ devices
+        video.setAttribute('playsinline', true);
+        video.play();
+        
+        // Hide permission denied message if shown
+        $('.permission-denied').hide();
+        
+      } catch (err) {
+        console.error('Error accessing camera:', err);
+        $('.permission-denied').show();
+      }
+    }
+    
+    // Stop camera
+    function stopCamera() {
+      return new Promise((resolve) => {
+        if (stream) {
+          const tracks = stream.getTracks();
+          tracks.forEach(track => track.stop());
+          stream = null;
+          
+          const video = $('.camera-video')[0];
+          video.srcObject = null;
+        }
+        resolve();
+      });
+    }
+    
+    // Handle page visibility changes
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden) {
+        stopCamera();
+      } else if ($('#fullscreenCamera').is(':visible')) {
+        initCamera();
+      }
+    });
+    
+    // Handle window resize
+    $(window).resize(function() {
+      if ($('#fullscreenCamera').is(':visible')) {
+        const video = $('.camera-video')[0];
+        if (video.videoWidth > 0) {
+          const aspectRatio = video.videoWidth / video.videoHeight;
+          const containerWidth = $('.camera-video-container').width();
+          $('.camera-video').css({
+            'width': '100%',
+            'height': '100%',
+            'object-fit': 'cover'
+          });
+        }
       }
     });
   });
   </script>
+  
+  <style>
+  /* Flash effect */
+  .flash-effect {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.9);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 1002;
+  }
+  
+  .flash-effect.active {
+    opacity: 1;
+  }
+  
+  /* Hide scrollbar when camera is open */
+  body.camera-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+  }
+  </style>
 </body>
 </html>
