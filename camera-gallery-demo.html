@@ -43,6 +43,12 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+    
+    /* Mirror effect for front camera */
+    .camera-video.front-camera {
+      transform: scaleX(-1);
     }
     
     .camera-controls { 
@@ -276,8 +282,12 @@
       const currentTrack = tracks.find(track => track.kind === 'video');
       if (!currentTrack) return;
       
-      const currentFacingMode = currentTrack.getSettings().facingMode || 'environment';
+      const settings = currentTrack.getSettings();
+      const currentFacingMode = settings.facingMode || 'environment';
       const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      
+      // Store whether we're using front camera for mirroring
+      window.isFrontCamera = newFacingMode === 'user';
       
       // Stop all tracks
       stopCamera().then(() => {
@@ -412,6 +422,18 @@
         // Wait for video to be ready
         await new Promise((resolve) => {
           video.onloadedmetadata = () => {
+            // Apply front camera mirroring if needed
+            const isFrontCamera = stream.getVideoTracks().some(track => {
+              const settings = track.getSettings();
+              return settings.facingMode === 'user';
+            });
+            
+            if (isFrontCamera) {
+              video.classList.add('front-camera');
+            } else {
+              video.classList.remove('front-camera');
+            }
+            
             video.play().then(() => {
               // Hide permission denied message if shown
               $('.permission-denied').hide();
