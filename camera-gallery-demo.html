@@ -104,6 +104,23 @@
       background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
     }
     
+    .camera-top-bar .btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.5);
+      border: none;
+      color: white;
+    }
+    
+    .camera-controls.disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    
     .permission-denied {
       display: none;
       color: white;
@@ -157,10 +174,20 @@
   <!-- Full-screen Camera Interface -->
   <div id="fullscreenCamera">
     <div class="camera-top-bar">
-      <button class="btn btn-sm btn-light close-camera">
-        <i class="bi bi-x-lg"></i>
+      <button class="btn btn-sm btn-light close-camera" title="Close">
+        <i class="bi bi-arrow-left"></i>
+      </button>
+      <button class="btn btn-sm btn-light switch-camera" title="Switch Camera">
+        <i class="bi bi-camera-reverse"></i>
       </button>
       <div class="flash-effect"></div>
+    </div>
+    
+    <!-- Loading indicator -->
+    <div class="camera-loading" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; z-index: 1004;">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
     </div>
     
     <div class="camera-video-container">
@@ -174,9 +201,6 @@
     </div>
     
     <div class="camera-controls">
-      <button class="switch-camera" title="Switch Camera">
-        <i class="bi bi-camera-reverse"></i>
-      </button>
       <div class="capture-btn" title="Take Photo">
         <i class="bi bi-circle-fill"></i>
       </div>
@@ -241,8 +265,25 @@
     
     // Switch camera
     $(document).on('click', '.switch-camera', function() {
+      if ($(this).hasClass('disabled')) return;
+      
+      // Toggle between front and back camera
+      const video = $('.camera-video')[0];
+      const stream = video.srcObject;
+      const tracks = stream.getTracks();
+      
+      // Get current facing mode
+      const currentTrack = tracks.find(track => track.kind === 'video');
+      if (!currentTrack) return;
+      
+      const currentFacingMode = currentTrack.getSettings().facingMode || 'environment';
+      const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      
+      // Stop all tracks
       stopCamera().then(() => {
-        currentDeviceId = currentDeviceId ? null : 'environment';
+        // Set the new facing mode
+        currentDeviceId = newFacingMode;
+        // Reinitialize camera with new facing mode
         initCamera();
       });
     });
@@ -329,31 +370,68 @@
     
     // Initialize camera
     async function initCamera() {
+      // Show loading state
+      $('.camera-loading').show();
+      $('.camera-controls').addClass('disabled');
+      
       try {
-        const constraints = {
+        // First try to get the list of devices to find available cameras
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        
+        let constraints = {
           video: {
             width: { ideal: 1920 },
             height: { ideal: 1080 },
-            facingMode: currentDeviceId || 'environment',
-            deviceId: currentDeviceId ? { exact: currentDeviceId } : undefined
+            facingMode: currentDeviceId || 'environment'
           },
           audio: false
         };
         
+        // If we have specific device IDs, use them directly
+        if (currentDeviceId && videoDevices.some(device => device.deviceId === currentDeviceId)) {
+          constraints.video.deviceId = { exact: currentDeviceId };
+        }
+        
+        // Request camera access
         stream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        // Get the actual device ID being used
+        const videoTracks = stream.getVideoTracks();
+        if (videoTracks.length > 0) {
+          const settings = videoTracks[0].getSettings();
+          currentDeviceId = settings.deviceId || currentDeviceId;
+        }
+        
         const video = $('.camera-video')[0];
         video.srcObject = stream;
         
         // Handle iOS 11+ devices
         video.setAttribute('playsinline', true);
-        video.play();
         
-        // Hide permission denied message if shown
-        $('.permission-denied').hide();
+        // Wait for video to be ready
+        await new Promise((resolve) => {
+          video.onloadedmetadata = () => {
+            video.play().then(() => {
+              // Hide permission denied message if shown
+              $('.permission-denied').hide();
+              $('.camera-loading').hide();
+              $('.camera-controls').removeClass('disabled');
+              resolve();
+            }).catch(err => {
+              console.error('Error playing video:', err);
+              $('.permission-denied').show();
+              $('.camera-loading').hide();
+              resolve();
+            });
+          };
+        });
         
       } catch (err) {
         console.error('Error accessing camera:', err);
         $('.permission-denied').show();
+        $('.camera-loading').hide();
+        $('.camera-controls').removeClass('disabled');
       }
     }
     
