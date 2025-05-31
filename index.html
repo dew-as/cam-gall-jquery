@@ -19,7 +19,7 @@
         <div class="card mb-4">
             <div class="card-header">Front View (Single)</div>
             <div class="card-body">
-                <button type="button" id="cam-gal-1" class="btn btn-primary"
+                <button type="button"  class="btn btn-primary cam-gal"
                     data-cg-name="front"
                     data-cg-multiple="false"
                     data-cg-frame="/frames/front.png"
@@ -29,12 +29,27 @@
                 <!-- Hidden input will be created dynamically -->
             </div>
         </div>
+
+        <!-- Single Image Example -->
+        <div class="card mb-4">
+            <div class="card-header">Right Side View (Single)</div>
+            <div class="card-body">
+                <button type="button" id="cam-gal-2" class="btn btn-primary cam-gal"
+                    data-cg-name="right-side"
+                    data-cg-multiple="false"
+                    data-cg-frame="/frames/right-side.png"
+                    data-cg-preview="true">
+                    <i class="bi bi-camera me-2"></i>Take Right Side Photo
+                </button>
+                <!-- Hidden input will be created dynamically -->
+            </div>
+        </div>
         
         <!-- Multiple Images Example -->
         <div class="card">
             <div class="card-header">Interior View (Multiple)</div>
             <div class="card-body">
-                <button type="button" class="btn btn-primary cam-gal"
+                <button type="button" id="cam-gal-1" class="btn btn-primary"
                     data-cg-name="interior"
                     data-cg-multiple="true"
                     data-cg-frame=""
