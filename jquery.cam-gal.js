@@ -3,7 +3,6 @@
 
     // Default settings
     const defaults = {
-        framePath: 'frames/',
         defaultFacingMode: 'environment'
     };
 
@@ -21,7 +20,7 @@
         init: function() {
             this.name = this.$element.data('cg-name') || 'image';
             this.multiple = this.$element.data('cg-multiple') || false;
-            this.frame = this.$element.data('cg-frame') || false;
+            this.framePath = this.$element.data('cg-frame') || '';
             this.preview = this.$element.data('cg-preview') !== false;
             this.images = [];
             this.inputsContainer = $(`<div class="cam-gal-inputs"></div>`);
@@ -299,12 +298,12 @@
             $('#cam-gal-preview').hide();
             $('#cam-gal-camera').show();
             
-            // Set frame if enabled
+            // Set frame if path is provided
             const $frame = $('.frame-overlay');
             $frame.css('opacity', 0);
             
-            if(this.frame && this.name) {
-                $frame.css('background-image', `url(${this.settings.framePath}${this.name}.png)`);
+            if(this.framePath) {
+                $frame.css('background-image', `url(${this.framePath})`);
                 $frame.css('opacity', 1);
             }
             
