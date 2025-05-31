@@ -339,8 +339,8 @@
         },
 
         openGallery: function() {
-            // Create temporary file input
-            const $fileInput = $('<input type="file" accept="image/*" style="display:none;">');
+            // Create temporary file input with explicit MIME types including HEIC/HEIF
+            const $fileInput = $('<input type="file" accept="image/*,.heic,.heif,image/heic,image/heif" style="display:none;">');
             
             if(this.multiple) {
                 $fileInput.attr('multiple', true);
@@ -348,17 +348,48 @@
             
             $('body').append($fileInput);
             
-            $fileInput.on('change', (e) => {
+            $fileInput.on('change', async (e) => {
                 const files = e.target.files;
                 if(!files.length) return;
                 
-                const reader = new FileReader();
-                reader.onload = (event) => {
+                try {
+                    let file = files[0];
+                    let imageData;
+
+                    // Check if file is HEIC/HEIF
+                    const isHeic = file.name.toLowerCase().endsWith('.heic') || 
+                                 file.name.toLowerCase().endsWith('.heif') ||
+                                 file.type === 'image/heic' || 
+                                 file.type === 'image/heif';
+
+                    if (isHeic && typeof heic2any !== 'undefined') {
+                        // Convert HEIC to JPEG
+                        const jpegBlob = await heic2any({
+                            blob: file,
+                            toType: 'image/jpeg',
+                            quality: 0.8
+                        });
+                        
+                        // Convert blob to base64
+                        imageData = await new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onload = (e) => resolve(e.target.result);
+                            reader.readAsDataURL(jpegBlob);
+                        });
+                    } else {
+                        // For non-HEIC files, read as usual
+                        imageData = await new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onload = (e) => resolve(e.target.result);
+                            reader.readAsDataURL(file);
+                        });
+                    }
+
                     // Add to images
                     if(this.multiple) {
-                        this.images.push(event.target.result);
+                        this.images.push(imageData);
                     } else {
-                        this.images = [event.target.result];
+                        this.images = [imageData];
                     }
                     
                     // Update input
@@ -371,13 +402,13 @@
                         $('#cam-gal-modal').fadeOut();
                         $('body').css('overflow', '');
                     }
-                };
-                
-                // Read first file only for single mode
-                reader.readAsDataURL(files[0]);
-                
-                // Remove temporary input
-                $fileInput.remove();
+                } catch (error) {
+                    console.error('Error processing image:', error);
+                    alert('Error processing the image. Please try another image.');
+                } finally {
+                    // Remove temporary input
+                    $fileInput.remove();
+                }
             });
             
             // Trigger file selection
