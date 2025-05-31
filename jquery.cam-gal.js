@@ -17,26 +17,24 @@
 
     // Plugin methods
     CamGal.prototype = {
+        // Initialize the plugin
         init: function() {
-            // Get attributes
-            this.name = this.$element.data('cg-name');
-            this.multiple = this.$element.data('cg-multiple') === 'true' || this.$element.data('cg-multiple') === true;
-            this.frame = this.$element.data('cg-frame') === 'true' || this.$element.data('cg-frame') === true;
-            this.preview = this.$element.data('cg-preview') === 'true' || this.$element.data('cg-preview') === true;
-            
-            // Find corresponding input
-            this.$input = $(`input[name="${this.name}"]`);
-            
-            // Initialize images array
+            this.name = this.$element.data('cg-name') || 'image';
+            this.multiple = this.$element.data('cg-multiple') || false;
+            this.frame = this.$element.data('cg-frame') || false;
+            this.preview = this.$element.data('cg-preview') !== false;
             this.images = [];
-            if(this.$input.val()) {
-                try {
-                    this.images = this.multiple ? JSON.parse(this.$input.val()) : [this.$input.val()];
-                } catch(e) {
-                    this.images = [];
-                }
-            }
+            this.inputsContainer = $(`<div class="cam-gal-inputs"></div>`);
+            this.$element.after(this.inputsContainer);
             
+            // Load existing values if any
+            this.loadExistingValues();
+            
+            // Bind events
+            this.bindEvents();
+        },
+
+        bindEvents: function() {
             // Bind click event
             this.$element.on('click', this.openModal.bind(this));
         },
@@ -99,7 +97,7 @@
                                 <i class="bi bi-arrow-left"></i>
                             </button>
                             <button class="btn btn-sm btn-light cam-gal-switch-camera">
-                                <i class="bi bi-camera-reverse"></i> 🔄
+                                <i class="bi bi-camera-reverse"></i> 
                             </button>
                         </div>
                         
@@ -497,12 +495,66 @@
             $fileInput.click();
         },
 
-        updateInput: function() {
-            if(this.multiple) {
-                this.$input.val(JSON.stringify(this.images));
+        loadExistingValues: function() {
+            // Check for existing inputs with the same name
+            const existingInputs = $(`input[type="hidden"][name^="${this.name}"]`);
+            
+            if (existingInputs.length > 0) {
+                // If we found existing inputs, load their values
+                this.images = existingInputs.map(function() {
+                    return $(this).val();
+                }).get().filter(Boolean);
+                
+                // Remove the old inputs as we'll recreate them
+                existingInputs.not(this.inputsContainer.find('input')).remove();
             } else {
-                this.$input.val(this.images[0] || '');
+                // Fallback to checking the old single input value
+                const oldInput = $(`input[type="hidden"][name="${this.name}"]`);
+                if (oldInput.length) {
+                    const value = oldInput.val();
+                    if (value) {
+                        try {
+                            this.images = JSON.parse(value);
+                            if (!Array.isArray(this.images)) {
+                                this.images = [this.images];
+                            }
+                        } catch (e) {
+                            this.images = [value];
+                        }
+                        oldInput.remove();
+                    }
+                }
             }
+            
+            // Filter out any empty values
+            this.images = this.images.filter(img => img);
+            
+            // Update the inputs to match the loaded values
+            if (this.images.length > 0) {
+                this.updateInput();
+            }
+        },
+
+        updateInput: function() {
+            // Clear existing inputs
+            this.inputsContainer.empty();
+            
+            if (this.multiple) {
+                // For multiple images, create an input for each image
+                this.images.forEach((image, index) => {
+                    const input = $(`<input type="hidden" name="${this.name}[]" value="${image}">`);
+                    this.inputsContainer.append(input);
+                });
+            } else {
+                // For single image, create a single input
+                if (this.images.length > 0) {
+                    const input = $(`<input type="hidden" name="${this.name}" value="${this.images[0]}">`);
+                    this.inputsContainer.append(input);
+                }
+            }
+            
+            // Trigger change event on the container for any external listeners
+            this.inputsContainer.trigger('change');
         },
 
         destroy: function() {
