@@ -200,38 +200,49 @@
             const $preview = $('#cam-gal-preview .preview-images');
             $preview.empty();
             
-            this.images.forEach((img, index) => {
-                $preview.append(`
-                    <div class="preview-item position-relative" style="width:100px; height:100px; cursor: pointer;">
-                        <img src="${img}" class="img-thumbnail preview-image" data-index="${index}" style="width:100%; height:100%; object-fit:cover;">
-                        <button class="btn btn-danger btn-sm remove-image" data-index="${index}" style="position:absolute; top:0; right:0; padding:0.25rem;">
-                            <i class="bi bi-x"></i>
-                        </button>
-                    </div>
-                `);
-            });
+            // Show loading indicator
+            const $loading = $('<div class="d-flex justify-content-center align-items-center" style="width:100%; height:100px;">' +
+                            '<div class="spinner-border text-primary" role="status">' +
+                            '<span class="visually-hidden">Loading...</span></div></div>');
+            $preview.append($loading);
             
-            // Add event for remove buttons
-            $preview.find('.remove-image').on('click', (e) => {
-                e.stopPropagation(); // Prevent triggering the preview
-                const index = $(e.currentTarget).data('index');
-                this.removeImage(index);
-            });
-            
-            // Add click event for preview images
-            $preview.find('.preview-item').on('click', (e) => {
-                if (!$(e.target).hasClass('remove-image')) {
-                    const index = $(e.currentTarget).find('.preview-image').data('index');
-                    this.showFullscreenPreview(this.images[index]);
-                }
-            });
-            
-            // Toggle "Add More" button
-            $('.cam-gal-add').toggle(this.multiple);
-            
-            $('#cam-gal-preview').show();
-            $('#cam-gal-options').hide();
-            $('#cam-gal-camera').hide();
+            // Process images with a small delay to allow UI to update
+            setTimeout(() => {
+                $loading.remove();
+                
+                this.images.forEach((img, index) => {
+                    $preview.append(`
+                        <div class="preview-item position-relative" style="width:100px; height:100px; cursor: pointer;">
+                            <img src="${img}" class="img-thumbnail preview-image" data-index="${index}" style="width:100%; height:100%; object-fit:cover;">
+                            <button class="btn btn-danger btn-sm remove-image" data-index="${index}" style="position:absolute; top:0; right:0; padding:0.25rem;">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                    `);
+                });
+                
+                // Add event for remove buttons
+                $preview.find('.remove-image').on('click', (e) => {
+                    e.stopPropagation(); // Prevent triggering the preview
+                    const index = $(e.currentTarget).data('index');
+                    this.removeImage(index);
+                });
+                
+                // Add click event for preview images
+                $preview.find('.preview-item').on('click', (e) => {
+                    if (!$(e.target).hasClass('remove-image')) {
+                        const index = $(e.currentTarget).find('.preview-image').data('index');
+                        this.showFullscreenPreview(this.images[index]);
+                    }
+                });
+                
+                // Toggle "Add More" button
+                $('.cam-gal-add').toggle(this.multiple);
+                
+                $('#cam-gal-preview').show();
+                $('#cam-gal-options').hide();
+                $('#cam-gal-camera').hide();
+            }, 100); // Small delay to ensure UI updates
         },
         
         showFullscreenPreview: function(imageSrc) {
@@ -403,6 +414,20 @@
                 const files = e.target.files;
                 if(!files.length) return;
                 
+                // Show loading overlay
+                const $loadingOverlay = $(`
+                    <div class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex justify-content-center align-items-center" 
+                         style="z-index: 3000;">
+                        <div class="text-center text-white">
+                            <div class="spinner-border mb-2" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p>Processing image...</p>
+                        </div>
+                    </div>
+                `);
+                $('body').append($loadingOverlay);
+                
                 try {
                     let file = files[0];
                     let imageData;
@@ -415,6 +440,7 @@
 
                     if (isHeic && typeof heic2any !== 'undefined') {
                         // Convert HEIC to JPEG
+                        $loadingOverlay.find('p').text('Converting HEIC to JPEG...');
                         const jpegBlob = await heic2any({
                             blob: file,
                             toType: 'image/jpeg',
@@ -422,6 +448,7 @@
                         });
                         
                         // Convert blob to base64
+                        $loadingOverlay.find('p').text('Processing image...');
                         imageData = await new Promise((resolve) => {
                             const reader = new FileReader();
                             reader.onload = (e) => resolve(e.target.result);
@@ -457,7 +484,8 @@
                     console.error('Error processing image:', error);
                     alert('Error processing the image. Please try another image.');
                 } finally {
-                    // Remove temporary input
+                    // Remove loading overlay and temporary input
+                    $loadingOverlay.remove();
                     $fileInput.remove();
                 }
             });
