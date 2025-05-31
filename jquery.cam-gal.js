@@ -375,8 +375,8 @@
             // Draw video frame to canvas
             ctx.drawImage($video, 0, 0, canvas.width, canvas.height);
             
-            // Convert to base64
-            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            // Convert to base64 with maximum quality
+            const imageData = canvas.toDataURL('image/jpeg', 1.0);
             
             // Add to images
             if(this.multiple) {
@@ -444,7 +444,7 @@
                         const jpegBlob = await heic2any({
                             blob: file,
                             toType: 'image/jpeg',
-                            quality: 0.8
+                            quality: 1.0
                         });
                         
                         // Convert blob to base64
