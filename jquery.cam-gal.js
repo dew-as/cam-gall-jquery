@@ -202,8 +202,8 @@
             
             this.images.forEach((img, index) => {
                 $preview.append(`
-                    <div class="preview-item position-relative" style="width:100px; height:100px;">
-                        <img src="${img}" class="img-thumbnail" style="width:100%; height:100%; object-fit:cover;">
+                    <div class="preview-item position-relative" style="width:100px; height:100px; cursor: pointer;">
+                        <img src="${img}" class="img-thumbnail preview-image" data-index="${index}" style="width:100%; height:100%; object-fit:cover;">
                         <button class="btn btn-danger btn-sm remove-image" data-index="${index}" style="position:absolute; top:0; right:0; padding:0.25rem;">
                             <i class="bi bi-x"></i>
                         </button>
@@ -213,8 +213,17 @@
             
             // Add event for remove buttons
             $preview.find('.remove-image').on('click', (e) => {
+                e.stopPropagation(); // Prevent triggering the preview
                 const index = $(e.currentTarget).data('index');
                 this.removeImage(index);
+            });
+            
+            // Add click event for preview images
+            $preview.find('.preview-item').on('click', (e) => {
+                if (!$(e.target).hasClass('remove-image')) {
+                    const index = $(e.currentTarget).find('.preview-image').data('index');
+                    this.showFullscreenPreview(this.images[index]);
+                }
             });
             
             // Toggle "Add More" button
@@ -223,6 +232,48 @@
             $('#cam-gal-preview').show();
             $('#cam-gal-options').hide();
             $('#cam-gal-camera').hide();
+        },
+        
+        showFullscreenPreview: function(imageSrc) {
+            // Create fullscreen preview if it doesn't exist
+            let $fullscreenPreview = $('#cam-gal-fullscreen-preview');
+            
+            if ($fullscreenPreview.length === 0) {
+                $('body').append(`
+                    <div id="cam-gal-fullscreen-preview" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:3000; display:flex; justify-content:center; align-items:center; flex-direction:column;">
+                        <button class="btn btn-light" style="position:absolute; top:20px; left:20px;">
+                            <i class="bi bi-arrow-left"></i> Back
+                        </button>
+                        <img src="${imageSrc}" style="max-width:90%; max-height:80vh; object-fit:contain;">
+                    </div>
+                `);
+                $fullscreenPreview = $('#cam-gal-fullscreen-preview');
+                
+                // Handle back button click
+                $fullscreenPreview.find('button').on('click', () => {
+                    $fullscreenPreview.remove();
+                });
+                
+                // Close on escape key
+                $(document).on('keyup.fullscreenPreview', (e) => {
+                    if (e.key === 'Escape') {
+                        $fullscreenPreview.remove();
+                        $(document).off('keyup.fullscreenPreview');
+                    }
+                });
+                
+                // Close on backdrop click
+                $fullscreenPreview.on('click', (e) => {
+                    if (e.target === $fullscreenPreview[0]) {
+                        $fullscreenPreview.remove();
+                        $(document).off('keyup.fullscreenPreview');
+                    }
+                });
+            } else {
+                $fullscreenPreview.find('img').attr('src', imageSrc);
+            }
+            
+            $fullscreenPreview.show();
         },
 
         removeImage: function(index) {
