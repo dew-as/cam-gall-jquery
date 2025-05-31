@@ -96,7 +96,7 @@
                                 <i class="bi bi-arrow-left"></i>
                             </button>
                             <button class="btn btn-sm btn-light cam-gal-switch-camera">
-                                <i class="bi bi-camera-reverse"></i> 
+                                <i class="bi bi-camera-reverse"></i>🔄
                             </button>
                         </div>
                         
