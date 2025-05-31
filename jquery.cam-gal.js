@@ -9,6 +9,7 @@
 
     // Plugin constructor
     function CamGal(element, options) {
+        
         this.$element = $(element);
         this.settings = $.extend({}, defaults, options);
         this.init();
@@ -41,6 +42,8 @@
         },
 
         openModal: function() {
+            console.log(this);
+
             // Create modal if doesn't exist
             if(!$('#cam-gal-modal').length) {
                 this.createModal();
