@@ -11,7 +11,6 @@
     this.$element = $(element);
     this.settings = $.extend({}, defaults, options);
     this.initialized = false;
-    console.log('CamGal initialized with settings:', this.settings);
     this.init();
   }
 
@@ -69,12 +68,7 @@
       this.preview = this.$element.data("cg-preview") !== false;
       this.actionUrl = this.settings.actionUrl;
       
-      console.log('Initialized with:', {
-        name: this.name,
-        multiple: this.multiple,
-        actionUrl: this.actionUrl,
-        element: this.$element
-      });
+
       this.images = [];
       
       // Use existing inputs container or create a new one
@@ -303,15 +297,10 @@
 
       // OK button in preview
       $(document).on('click', '.cam-gal-ok', function() {
-        console.log('OK button clicked');
-        const $modal = $('#cam-gal-modal');
+          const $modal = $('#cam-gal-modal');
         const instance = $modal.data('current-instance');
         
-        console.log('Modal instance:', instance);
-        
         if (instance) {
-          console.log('Action URL:', instance.actionUrl);
-          console.log('Images to send:', instance.images);
           // Create FormData to send
           const formData = new FormData();
           
@@ -335,7 +324,6 @@
             const $okBtn = $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...');
             
             // Send AJAX request
-            console.log('Sending AJAX request with form data');
             $.ajax({
               url: instance.actionUrl,
               type: 'POST',
@@ -345,14 +333,10 @@
               headers: {
                 'X-Requested-With': 'XMLHttpRequest'
               },
-              beforeSend: function(xhr) {
-                console.log('AJAX request being sent');
+              success: function() {
+                // Handle success
               },
-              success: function(response) {
-                console.log('Images uploaded successfully:', response);
-              },
-              error: function(xhr, status, error) {
-                console.error('Error uploading images:', error);
+              error: function() {
                 alert('Error uploading images. Please try again.');
               },
               complete: function() {
