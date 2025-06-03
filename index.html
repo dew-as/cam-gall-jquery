@@ -93,9 +93,11 @@
       $(document).ready(function () {
         // Initialize plugin on all attributes working
         $(".cam-gal").camGal({
-          actionUrl: "google.com",
+          actionUrl: "http://localhost:3000/api/data",
         });
-        $("#cam-gal-1").camGal();
+        $("#cam-gal-1").camGal({
+            actionUrl: "http://localhost:3000/api/data",
+        });
       });
     </script>
   </body>

@@ -11,6 +11,7 @@
     this.$element = $(element);
     this.settings = $.extend({}, defaults, options);
     this.initialized = false;
+    console.log('CamGal initialized with settings:', this.settings);
     this.init();
   }
 
@@ -66,6 +67,14 @@
       this.multiple = this.$element.data("cg-multiple") || false;
       this.framePath = this.$element.data("cg-frame") || "";
       this.preview = this.$element.data("cg-preview") !== false;
+      this.actionUrl = this.settings.actionUrl;
+      
+      console.log('Initialized with:', {
+        name: this.name,
+        multiple: this.multiple,
+        actionUrl: this.actionUrl,
+        element: this.$element
+      });
       this.images = [];
       
       // Use existing inputs container or create a new one
@@ -294,8 +303,73 @@
 
       // OK button in preview
       $(document).on('click', '.cam-gal-ok', function() {
-        $('#cam-gal-modal').fadeOut();
-        $('body').css('overflow', '');
+        console.log('OK button clicked');
+        const $modal = $('#cam-gal-modal');
+        const instance = $modal.data('current-instance');
+        
+        console.log('Modal instance:', instance);
+        
+        if (instance) {
+          console.log('Action URL:', instance.actionUrl);
+          console.log('Images to send:', instance.images);
+          // Create FormData to send
+          const formData = new FormData();
+          
+          // Add images to form data
+          if (instance.multiple) {
+            // For multiple images, send as array
+            instance.images.forEach((img, index) => {
+              formData.append(`${instance.name}[]`, img);
+            });
+          } else if (instance.images.length > 0) {
+            // For single image, send as single field
+            formData.append(instance.name, instance.images[0]);
+          }
+          
+          // Add any additional data
+          formData.append('timestamp', new Date().toISOString());
+          
+          // Only proceed if we have an action URL and at least one image
+          if (instance.actionUrl && instance.images.length > 0) {
+            // Show loading state
+            const $okBtn = $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...');
+            
+            // Send AJAX request
+            console.log('Sending AJAX request with form data');
+            $.ajax({
+              url: instance.actionUrl,
+              type: 'POST',
+              data: formData,
+              processData: false,
+              contentType: false,
+              headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+              },
+              beforeSend: function(xhr) {
+                console.log('AJAX request being sent');
+              },
+              success: function(response) {
+                console.log('Images uploaded successfully:', response);
+              },
+              error: function(xhr, status, error) {
+                console.error('Error uploading images:', error);
+                alert('Error uploading images. Please try again.');
+              },
+              complete: function() {
+                // Close modal and clean up
+                $modal.fadeOut(300, function() {
+                  $('body').css('overflow', '');
+                  $okBtn.prop('disabled', false).text('OK');
+                });
+              }
+            });
+          } else {
+            // No action URL or no images, just close the modal
+            $modal.fadeOut(300, function() {
+              $('body').css('overflow', '');
+            });
+          }
+        }
       });
 
       // Camera controls
