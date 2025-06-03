@@ -10,26 +10,78 @@
   function CamGal(element, options) {
     this.$element = $(element);
     this.settings = $.extend({}, defaults, options);
+    this.initialized = false;
     this.init();
+  }
+
+  // Helper function to check if string is base64
+  function isBase64(str) {
+    if (typeof str !== 'string') return false;
+    try {
+      return /^data:image\/[a-z]+;base64,/.test(str) || 
+             /^[A-Za-z0-9+/=]+$/.test(str.replace(/^data:image\/[a-z]+;base64,/, ''));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Function to convert image URL to base64
+  function urlToBase64(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.height = img.naturalHeight;
+        canvas.width = img.naturalWidth;
+        ctx.drawImage(img, 0, 0);
+        
+        try {
+          const dataUrl = canvas.toDataURL('image/jpeg');
+          resolve(dataUrl);
+        } catch (e) {
+          // If conversion fails, return the original URL
+          resolve(url);
+        }
+      };
+      
+      img.onerror = function() {
+        // If image fails to load, return the original URL
+        resolve(url);
+      };
+      
+      img.src = url;
+    });
   }
 
   // Plugin methods
   CamGal.prototype = {
     // Initialize the plugin
     init: function () {
+      if (this.initialized) return;
+      
       this.name = this.$element.data("cg-name") || "image";
       this.multiple = this.$element.data("cg-multiple") || false;
       this.framePath = this.$element.data("cg-frame") || "";
       this.preview = this.$element.data("cg-preview") !== false;
       this.images = [];
-      this.inputsContainer = $(`<div class="cam-gal-inputs"></div>`);
-      this.$element.after(this.inputsContainer);
+      
+      // Use existing inputs container or create a new one
+      this.inputsContainer = this.$element.siblings('.cam-gal-inputs').first();
+      if (this.inputsContainer.length === 0) {
+        this.inputsContainer = $(`<div class="cam-gal-inputs"></div>`);
+        this.$element.after(this.inputsContainer);
+      }
 
       // Load existing values if any
       this.loadExistingValues();
 
       // Bind events
       this.bindEvents();
+      
+      this.initialized = true;
     },
 
     bindEvents: function () {
@@ -37,8 +89,9 @@
       this.$element.on("click", this.openModal.bind(this));
     },
 
-    openModal: function () {
-      console.log(this);
+    openModal: async function () {
+      console.log('Opening modal with images:', this.images);
+      const self = this;
 
       // Create modal if doesn't exist
       if (!$("#cam-gal-modal").length) {
@@ -48,16 +101,65 @@
       // Store current instance
       $("#cam-gal-modal").data("current-instance", this);
 
-      // Show preview or options
-      if (this.preview && this.images.length > 0) {
-        this.showPreview();
-      } else {
+      // Show loading state
+      $("#cam-gal-options").hide();
+      $("#cam-gal-preview").hide();
+      
+      // Create loading overlay
+      const $loadingOverlay = $(
+        '<div class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex justify-content-center align-items-center" style="z-index: 3000;">' +
+        '<div class="text-center text-white">' +
+          '<div class="spinner-border mb-2" role="status">' +
+            '<span class="visually-hidden">Loading...</span>' +
+          '</div>' +
+          '<p>Loading images...</p>' +
+        '</div>' +
+        '</div>'
+      );
+      
+      $('body').append($loadingOverlay);
+      
+      try {
+        // Process each image
+        const imagePromises = this.images.map(async (img, i) => {
+          if (img && !isBase64(img) && (img.startsWith('http') || img.startsWith('//') || img.startsWith('/'))) {
+            try {
+              console.log('Converting URL to base64:', img);
+              const base64Image = await urlToBase64(img);
+              if (base64Image) {
+                self.images[i] = base64Image;
+                console.log('Successfully converted to base64');
+              }
+            } catch (e) {
+              console.warn('Failed to convert image to base64:', e);
+            }
+          }
+          return self.images[i];
+        });
+        
+        // Wait for all conversions to complete
+        await Promise.all(imagePromises);
+        
+        // Update the hidden inputs with base64 data
+        this.updateInput();
+        
+        // Show preview or options
+        if (this.preview && this.images.length > 0) {
+          this.showPreview();
+        } else {
+          this.showOptions();
+        }
+        
+        // Show modal
+        $("#cam-gal-modal").fadeIn();
+        $("body").css("overflow", "hidden");
+        
+      } catch (e) {
+        console.error('Error in openModal:', e);
         this.showOptions();
+      } finally {
+        $loadingOverlay.remove();
       }
-
-      // Show modal
-      $("#cam-gal-modal").fadeIn();
-      $("body").css("overflow", "hidden");
     },
 
     createModal: function () {
@@ -209,23 +311,43 @@
       $preview.append($loading);
 
       // Process images with a small delay to allow UI to update
-      setTimeout(() => {
+      setTimeout(async () => {
         $loading.remove();
-
-        this.images.forEach((img, index) => {
+        
+        // Process each image
+        for (let i = 0; i < this.images.length; i++) {
+          const img = this.images[i];
+          let imgSrc = img;
+          
+          // If not base64 and looks like a URL, try to convert it
+          if (!isBase64(img) && (img.startsWith('http') || img.startsWith('//') || img.startsWith('/'))) {
+            try {
+              // Convert URL to base64
+              const base64Image = await urlToBase64(img);
+              if (base64Image) {
+                // Update the image in the array with base64 data
+                this.images[i] = base64Image;
+                imgSrc = base64Image;
+              }
+            } catch (e) {
+              console.warn('Failed to convert image to base64:', e);
+            }
+          }
+          
+          // Create preview item
           $preview.append(`
-                        <div class="preview-item position-relative" style="width:100px; height:100px; cursor: pointer;">
-                            <img src="${img}" class="img-thumbnail preview-image" data-index="${index}" style="width:100%; height:100%; object-fit:cover;">
-                            <button class="btn btn-danger btn-sm remove-image" data-index="${index}" style="position:absolute; top:0; right:0; padding:0.25rem;">
-                                <i class="bi bi-x"></i>
-                            </button>
-                        </div>
-                    `);
-        });
+            <div class="preview-item position-relative" style="width:100px; height:100px; cursor: pointer;">
+              <img src="${imgSrc}" class="img-thumbnail preview-image" data-index="${i}" style="width:100%; height:100%; object-fit:cover;">
+              <button class="btn btn-danger btn-sm remove-image" data-index="${i}" style="position:absolute; top:0; right:0; padding:0.25rem;">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
+          `);
+        }
 
         // Add event for remove buttons
         $preview.find(".remove-image").on("click", (e) => {
-          e.stopPropagation(); // Prevent triggering the preview
+          e.stopPropagation();
           const index = $(e.currentTarget).data("index");
           this.removeImage(index);
         });
@@ -233,9 +355,7 @@
         // Add click event for preview images
         $preview.find(".preview-item").on("click", (e) => {
           if (!$(e.target).hasClass("remove-image")) {
-            const index = $(e.currentTarget)
-              .find(".preview-image")
-              .data("index");
+            const index = $(e.currentTarget).find(".preview-image").data("index");
             this.showFullscreenPreview(this.images[index]);
           }
         });
@@ -505,9 +625,9 @@
     },
 
     loadExistingValues: function () {
-      // Check for existing inputs with the same name
-      const existingInputs = $(`input[type="hidden"][name^="${this.name}"]`);
-
+      // Get all existing inputs within our container
+      const existingInputs = this.inputsContainer.find(`input[type="hidden"][name^="${this.name}"]`);
+      
       if (existingInputs.length > 0) {
         // If we found existing inputs, load their values
         this.images = existingInputs
@@ -516,57 +636,81 @@
           })
           .get()
           .filter(Boolean);
-
-        // Remove the old inputs as we'll recreate them
-        existingInputs.not(this.inputsContainer.find("input")).remove();
       } else {
-        // Fallback to checking the old single input value
-        const oldInput = $(`input[type="hidden"][name="${this.name}"]`);
-        if (oldInput.length) {
-          const value = oldInput.val();
-          if (value) {
-            try {
-              this.images = JSON.parse(value);
-              if (!Array.isArray(this.images)) {
-                this.images = [this.images];
+        // Check for any inputs with the same name in the document
+        const otherInputs = $(`input[type="hidden"][name^="${this.name}"]`).not(this.inputsContainer.find('input'));
+        if (otherInputs.length > 0) {
+          this.images = otherInputs
+            .map(function () {
+              const val = $(this).val();
+              $(this).remove(); // Remove the old input
+              return val;
+            })
+            .get()
+            .filter(Boolean);
+        } else {
+          // Fallback to checking the old single input value
+          const oldInput = $(`input[type="hidden"][name="${this.name}"]`);
+          if (oldInput.length) {
+            const value = oldInput.val();
+            if (value) {
+              try {
+                this.images = JSON.parse(value);
+                if (!Array.isArray(this.images)) {
+                  this.images = [this.images];
+                }
+              } catch (e) {
+                this.images = [value];
               }
-            } catch (e) {
-              this.images = [value];
+              oldInput.remove();
             }
-            oldInput.remove();
           }
         }
       }
 
       // Filter out any empty values
-      this.images = this.images.filter((img) => img);
+      this.images = this.images.filter((img) => img && typeof img === 'string');
 
       // Update the inputs to match the loaded values
       if (this.images.length > 0) {
+        this.updateInput();
+      } else {
+        // Ensure we have at least one empty input
         this.updateInput();
       }
     },
 
     updateInput: function () {
+      // Don't update if we're in the middle of initializing
+      if (!this.initialized) return;
+      
       // Clear existing inputs
       this.inputsContainer.empty();
 
+      if (this.images.length === 0) {
+        // If no images, ensure we have at least one empty input
+        const inputName = this.multiple ? `${this.name}[]` : this.name;
+        const input = $(`<input type="hidden" name="${inputName}">`);
+        this.inputsContainer.append(input);
+        return;
+      }
+
       if (this.multiple) {
         // For multiple images, create an input for each image
-        this.images.forEach((image, index) => {
-          const input = $(
-            `<input type="hidden" name="${this.name}[]" value="${image}">`
-          );
+        this.images.forEach((image) => {
+          if (!image) return;
+          const input = $(`<input type="hidden" name="${this.name}[]">`);
+          // Properly escape the value to prevent XSS and handle special characters
+          const escapedValue = $('<div>').text(image).html();
+          input.val(escapedValue);
           this.inputsContainer.append(input);
         });
       } else {
-        // For single image, create a single input
-        if (this.images.length > 0) {
-          const input = $(
-            `<input type="hidden" name="${this.name}" value="${this.images[0]}">`
-          );
-          this.inputsContainer.append(input);
-        }
+        const input = $(`<input type="hidden" name="${this.name}">`);
+        // Properly escape the value to prevent XSS and handle special characters
+        const escapedValue = $('<div>').text(this.images[0] || '').html();
+        input.val(escapedValue);
+        this.inputsContainer.append(input);
       }
 
       // Trigger change event on the container for any external listeners

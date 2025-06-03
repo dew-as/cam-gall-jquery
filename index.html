@@ -1,65 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>cam-gal Demo</title>
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <style>
-    </style>
-</head>
-<body>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
+    />
+    <style></style>
+  </head>
+  <body>
     <div class="container py-4">
-        <h1 class="text-center mb-4">cam-gal Plugin Demo</h1>
-        
-        <!-- Single Image Example -->
-        <div class="card mb-4">
-            <div class="card-header">Front View (Single)</div>
-            <div class="card-body">
-                <button type="button"  class="btn btn-primary cam-gal"
-                    data-cg-name="front"
-                    data-cg-multiple="false"
-                    data-cg-frame="/frames/front.png"
-                    data-cg-preview="true">
-                    <i class="bi bi-camera me-2"></i>Take Front Photo
-                </button>
-                <!-- Hidden input will be created dynamically -->
-            </div>
-        </div>
+      <h1 class="text-center mb-4">cam-gal Plugin Demo</h1>
 
-        <!-- Single Image Example -->
-        <div class="card mb-4">
-            <div class="card-header">Right Side View (Single)</div>
-            <div class="card-body">
-                <button type="button" id="cam-gal-2" class="btn btn-primary cam-gal"
-                    data-cg-name="right-side"
-                    data-cg-multiple="false"
-                    data-cg-frame="/frames/right-side.png"
-                    data-cg-preview="true">
-                    <i class="bi bi-camera me-2"></i>Take Right Side Photo
-                </button>
-                <!-- Hidden input will be created dynamically -->
-            </div>
+      <!-- Single Image Example -->
+      <div class="card mb-4">
+        <div class="card-header">Front View (Single)</div>
+        <div class="card-body">
+          <button
+            type="button"
+            class="btn btn-primary cam-gal"
+            data-cg-name="front"
+            data-cg-multiple="false"
+            data-cg-frame="/frames/front.png"
+            data-cg-preview="true"
+          >
+            <i class="bi bi-camera me-2"></i>Take Front Photo
+          </button>
+          <!-- Hidden input will be created dynamically -->
         </div>
-        
-        <!-- Multiple Images Example -->
-        <div class="card">
-            <div class="card-header">Interior View (Multiple)</div>
-            <div class="card-body">
-                <button type="button" id="cam-gal-1" class="btn btn-primary"
-                    data-cg-name="interior"
-                    data-cg-multiple="true"
-                    data-cg-frame=""
-                    data-cg-preview="true">
-                    <i class="bi bi-camera me-2"></i>Add Interior Photos
-                </button>
-                <!-- Hidden inputs will be created dynamically -->
-                 <inner type="hidden" class="cam-gal-inputs" value="https://images.pexels.com/photos/18308288/pexels-photo-18308288/free-photo-of-lac-d-allos.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"></inner>
-            </div>
+      </div>
+
+      <!-- Single Image Example -->
+      <div class="card mb-4">
+        <div class="card-header">Right Side View (Single)</div>
+        <div class="card-body">
+          <button
+            type="button"
+            id="cam-gal-2"
+            class="btn btn-primary cam-gal"
+            data-cg-name="right-side"
+            data-cg-multiple="false"
+            data-cg-frame="/frames/right-side.png"
+            data-cg-preview="true"
+          >
+            <i class="bi bi-camera me-2"></i>Take Right Side Photo
+          </button>
+          <!-- Hidden input will be created dynamically -->
         </div>
+      </div>
+
+      <!-- Multiple Images Example -->
+      <div class="card">
+        <div class="card-header">Interior View (Multiple)</div>
+        <div class="card-body">
+          <button
+            type="button"
+            id="cam-gal-1"
+            class="btn btn-primary"
+            data-cg-name="interior"
+            data-cg-multiple="true"
+            data-cg-frame=""
+            data-cg-preview="true"
+          >
+            <i class="bi bi-camera me-2"></i>Add Interior Photos
+          </button>
+          <!-- Hidden inputs will be created dynamically -->
+
+          <!-- Hidden inputs container - will be populated by the plugin -->
+          <div class="cam-gal-inputs">
+            <input type="hidden" name="interior[]" value="https://media.istockphoto.com/id/814423752/photo/eye-of-model-with-colorful-art-make-up-close-up.jpg?s=612x612&w=0&k=20&c=l15OdMWjgCKycMMShP8UK94ELVlEGvt7GmB_esHWPYE=">
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- jQuery -->
@@ -68,15 +88,15 @@
     <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.3/dist/heic2any.min.js"></script>
     <!-- Plugin -->
     <script src="jquery.cam-gal.js"></script>
-    
+
     <script>
-    $(document).ready(function() {
+      $(document).ready(function () {
         // Initialize plugin on all attributes working
-        $('.cam-gal').camGal({
-            actionUrl:"google.com"
+        $(".cam-gal").camGal({
+          actionUrl: "google.com",
         });
-        $('#cam-gal-1').camGal();
-    });
+        $("#cam-gal-1").camGal();
+      });
     </script>
-</body>
+  </body>
 </html>
