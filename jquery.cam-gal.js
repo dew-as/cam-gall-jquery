@@ -28,31 +28,79 @@
   // Function to convert image URL to base64
   function urlToBase64(url) {
     return new Promise((resolve, reject) => {
+      // If it's already a base64 string, return it as is
+      if (isBase64(url)) {
+        resolve(url);
+        return;
+      }
+
+      // For S3 URLs, try to add a timestamp to bypass cache
+      const cacheBusterUrl = url.includes('?') 
+        ? `${url}&t=${Date.now()}` 
+        : `${url}?t=${Date.now()}`;
+
       const img = new Image();
       img.crossOrigin = 'Anonymous';
       
       img.onload = function() {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.height = img.naturalHeight;
-        canvas.width = img.naturalWidth;
-        ctx.drawImage(img, 0, 0);
-        
         try {
-          const dataUrl = canvas.toDataURL('image/jpeg');
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.height = img.naturalHeight;
+          canvas.width = img.naturalWidth;
+          
+          // Draw white background first (in case of transparent PNGs)
+          ctx.fillStyle = 'white';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw the image
+          ctx.drawImage(img, 0, 0);
+          
+          // Convert to JPEG with quality 0.9
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+          console.log('Successfully converted to base64:', url);
           resolve(dataUrl);
         } catch (e) {
+          console.warn('Failed to convert image to base64:', e);
           // If conversion fails, return the original URL
           resolve(url);
         }
       };
       
-      img.onerror = function() {
+      img.onerror = function(err) {
+        console.error('Error loading image:', url, err);
         // If image fails to load, return the original URL
         resolve(url);
       };
       
-      img.src = url;
+      // Set src after event handlers
+      img.src = cacheBusterUrl;
+      
+      // Handle case where image is already in cache and doesn't trigger onload
+      if (img.complete) {
+        img.onload = null;
+        img.onerror = null;
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.height = img.naturalHeight;
+        canvas.width = img.naturalWidth;
+        
+        try {
+          // Draw white background first
+          ctx.fillStyle = 'white';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw the image
+          ctx.drawImage(img, 0, 0);
+          
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+          console.log('Successfully converted cached image to base64:', url);
+          resolve(dataUrl);
+        } catch (e) {
+          console.warn('Failed to convert cached image to base64:', e);
+          resolve(url);
+        }
+      }
     });
   }
 
@@ -125,19 +173,37 @@
       try {
         // Process each image
         const imagePromises = this.images.map(async (img, i) => {
-          if (img && !isBase64(img) && (img.startsWith('http') || img.startsWith('//') || img.startsWith('/'))) {
-            try {
+          if (!img) return null;
+          
+          try {
+            // Skip if already base64
+            if (isBase64(img)) {
+              console.log('Image is already base64, skipping conversion');
+              return img;
+            }
+            
+            // Only process HTTP/HTTPS URLs and data URIs
+            if (typeof img === 'string' && 
+                (img.startsWith('http') || 
+                 img.startsWith('//') || 
+                 img.startsWith('/') ||
+                 img.startsWith('data:'))) {
+              
               console.log('Converting URL to base64:', img);
               const base64Image = await urlToBase64(img);
-              if (base64Image) {
-                self.images[i] = base64Image;
+              
+              if (base64Image && base64Image !== img) {
                 console.log('Successfully converted to base64');
+                self.images[i] = base64Image;
+                return base64Image;
               }
-            } catch (e) {
-              console.warn('Failed to convert image to base64:', e);
+              console.log('Using original image (conversion not needed or failed)');
             }
+            return img;
+          } catch (e) {
+            console.warn(`Failed to process image at index ${i}:`, e);
+            return img; // Return original on error
           }
-          return self.images[i];
         });
         
         // Wait for all conversions to complete
