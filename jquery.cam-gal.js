@@ -167,18 +167,20 @@
       const modalHTML = `
             <div id="cam-gal-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000;">
                 <div style="position:relative; max-width:500px; margin:50px auto; background:#fff; border-radius:8px; padding:20px;">
+                    <!-- Close Button (Top Right) -->
+                    <button class="btn btn-link p-0 position-absolute cam-gal-close" style="top: 10px; right: 10px; font-size: 1.5rem; line-height: 1; color: #6c757d;">
+                        <i class="bi bi-x"></i>
+                    </button>
+                    
                     <!-- Options View -->
                     <div id="cam-gal-options" style="display:none;">
                         <h4 class="text-center mb-4">Pick Image</h4>
                         <div class="d-flex justify-content-center gap-3">
-                            <button class="btn btn-primary cam-gal-option" data-type="camera">
-                                <i class="bi bi-camera"></i>
+                            <button class="btn btn-primary cam-gal-option" data-type="camera" style="min-width: 100px;">
+                                <i class="bi bi-camera me-2"></i>Camera
                             </button>
-                            <button class="btn btn-secondary cam-gal-option" data-type="gallery">
-                                <i class="bi bi-images"></i>
-                            </button>
-                            <button class="btn btn-danger cam-gal-close">
-                                <i class="bi bi-x-circle-fill"></i>
+                            <button class="btn btn-secondary cam-gal-option" data-type="gallery" style="min-width: 100px;">
+                                <i class="bi bi-images me-2"></i>Gallery
                             </button>
                         </div>
                     </div>
@@ -188,8 +190,9 @@
                         <h4 class="text-center mb-3">Preview</h4>
                         <div class="preview-images d-flex flex-wrap gap-2 mb-3"></div>
                         <div class="d-flex justify-content-center gap-2">
-                            <button class="btn btn-secondary cam-gal-back">Back</button>
-                            <button class="btn btn-primary cam-gal-add">Add More</button>
+                            <!-- Buttons will be shown/hidden dynamically in showPreview() -->
+                            <button class="btn btn-primary cam-gal-add" style="display:none;">Add +</button>
+                            <button class="btn btn-success cam-gal-ok" style="display:none;">OK</button>
                         </div>
                     </div>
                     
@@ -267,10 +270,32 @@
         $("#cam-gal-options").show();
       });
 
-      // Close modal
-      $(document).on("click", ".cam-gal-close", function () {
-        $("#cam-gal-modal").fadeOut();
-        $("body").css("overflow", "");
+      // Close button - using direct delegation to handle dynamically added elements
+      $(document).off('click', '.cam-gal-close').on('click', '.cam-gal-close', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const $modal = $('#cam-gal-modal');
+        const instance = $modal.data('current-instance');
+        
+        // Always close the modal when the X button is clicked
+        $modal.stop().fadeOut(300, function() {
+          $('body').css('overflow', '');
+        });
+        
+        // If in single image mode with no images, show options when modal is opened next time
+        if (instance && !instance.multiple && instance.images.length === 0) {
+          setTimeout(() => {
+            instance.showOptions();
+          }, 350);
+        }
+        
+        return false;
+      });
+
+      // OK button in preview
+      $(document).on('click', '.cam-gal-ok', function() {
+        $('#cam-gal-modal').fadeOut();
+        $('body').css('overflow', '');
       });
 
       // Camera controls
@@ -299,74 +324,65 @@
     },
 
     showPreview: function () {
-      const $preview = $("#cam-gal-preview .preview-images");
-      $preview.empty();
+      $('#cam-gal-options').hide();
+      $('#cam-gal-camera').hide();
+      const $preview = $('#cam-gal-preview');
+      const $previewImages = $preview.find('.preview-images').empty();
 
-      // Show loading indicator
-      const $loading = $(
-        '<div class="d-flex justify-content-center align-items-center" style="width:100%; height:100px;">' +
-          '<div class="spinner-border text-primary" role="status">' +
-          '<span class="visually-hidden">Loading...</span></div></div>'
-      );
-      $preview.append($loading);
+      // Show the preview section
+      $preview.show();
 
-      // Process images with a small delay to allow UI to update
-      setTimeout(async () => {
-        $loading.remove();
+      // Add all images to preview
+      this.images.forEach((img, index) => {
+        const $imgContainer = $('<div class="position-relative" style="width: 100px; height: 100px; overflow: hidden;"></div>');
+        const $img = $('<img>', {
+          src: img,
+          class: 'img-thumbnail w-100 h-100 object-fit-cover',
+          style: 'cursor: pointer;',
+          'data-index': index
+        });
         
-        // Process each image
-        for (let i = 0; i < this.images.length; i++) {
-          const img = this.images[i];
-          let imgSrc = img;
-          
-          // If not base64 and looks like a URL, try to convert it
-          if (!isBase64(img) && (img.startsWith('http') || img.startsWith('//') || img.startsWith('/'))) {
-            try {
-              // Convert URL to base64
-              const base64Image = await urlToBase64(img);
-              if (base64Image) {
-                // Update the image in the array with base64 data
-                this.images[i] = base64Image;
-                imgSrc = base64Image;
-              }
-            } catch (e) {
-              console.warn('Failed to convert image to base64:', e);
-            }
+        // Add delete button
+        const $deleteBtn = $('<button class="btn btn-danger btn-sm position-absolute top-0 end-0 m-1 rounded-circle" style="width: 24px; height: 24px; padding: 0; line-height: 1;">' +
+          '<i class="bi bi-x"></i>' +
+          '</button>');
+        
+        $imgContainer.append($img, $deleteBtn);
+        $previewImages.append($imgContainer);
+        
+        // Handle image click for fullscreen
+        $img.on('click', (e) => {
+          if (e.target !== $deleteBtn[0] && !$deleteBtn.has(e.target).length) {
+            this.showFullscreenPreview(img);
           }
-          
-          // Create preview item
-          $preview.append(`
-            <div class="preview-item position-relative" style="width:100px; height:100px; cursor: pointer;">
-              <img src="${imgSrc}" class="img-thumbnail preview-image" data-index="${i}" style="width:100%; height:100%; object-fit:cover;">
-              <button class="btn btn-danger btn-sm remove-image" data-index="${i}" style="position:absolute; top:0; right:0; padding:0.25rem;">
-                <i class="bi bi-x"></i>
-              </button>
-            </div>
-          `);
-        }
-
-        // Add event for remove buttons
-        $preview.find(".remove-image").on("click", (e) => {
+        });
+        
+        // Handle delete button click
+        $deleteBtn.on('click', (e) => {
           e.stopPropagation();
-          const index = $(e.currentTarget).data("index");
           this.removeImage(index);
-        });
-
-        // Add click event for preview images
-        $preview.find(".preview-item").on("click", (e) => {
-          if (!$(e.target).hasClass("remove-image")) {
-            const index = $(e.currentTarget).find(".preview-image").data("index");
-            this.showFullscreenPreview(this.images[index]);
+          // If in single image mode and no images left, go back to options
+          if (!this.multiple && this.images.length === 0) {
+            this.showOptions();
+          } else {
+            this.showPreview(); // Refresh preview
           }
         });
-
-        // Toggle "Add More" button
-        $(".cam-gal-add").toggle(this.multiple);
-
-        $("#cam-gal-preview").show();
-        $("#cam-gal-options").hide();
-        $("#cam-gal-camera").hide();
-      }, 100); // Small delay to ensure UI updates
+      });
+      
+      // Show/hide buttons based on single/multiple mode
+      const $addBtn = $preview.find('.cam-gal-add');
+      const $okBtn = $preview.find('.cam-gal-ok');
+      
+      if (this.multiple) {
+        // Multiple images mode: Show Add + and OK buttons
+        $addBtn.show();
+        $okBtn.show();
+      } else {
+        // Single image mode: Show only OK button when there's an image
+        $addBtn.hide();
+        $okBtn.toggle(this.images.length > 0);
+      }
     },
 
     showFullscreenPreview: function (imageSrc) {
