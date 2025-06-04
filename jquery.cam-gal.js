@@ -346,15 +346,37 @@
         const $modal = $('#cam-gal-modal');
         const instance = $modal.data('current-instance');
         
-        // Always close the modal when the X button is clicked
-        $modal.stop().fadeOut(300, function() {
-          $('body').css('overflow', '');
-        });
+        if (!instance) {
+          $modal.stop().fadeOut(300);
+          return false;
+        }
+        
+        // If we have images, save them before closing
+        if (instance.images && instance.images.length > 0) {
+          // Show loading state on the close button
+          const $closeBtn = $(this).prop('disabled', true).html('<i class="bi bi-arrow-clockwise"></i>');
+          
+          // Send images to server before closing
+          instance.sendImagesToServer(function() {
+            // After API call completes, close the modal
+            $modal.fadeOut(300, function() {
+              $('body').css('overflow', '');
+              $closeBtn.prop('disabled', false).html('<i class="bi bi-x"></i>');
+            });
+          });
+        } else {
+          // No images, just close the modal
+          $modal.stop().fadeOut(300, function() {
+            $('body').css('overflow', '');
+          });
+        }
         
         // If in single image mode with no images, show options when modal is opened next time
-        if (instance && !instance.multiple && instance.images.length === 0) {
+        if (!instance.multiple && (!instance.images || instance.images.length === 0)) {
           setTimeout(() => {
-            instance.showOptions();
+            if (instance.showOptions) {
+              instance.showOptions();
+            }
           }, 350);
         }
         
@@ -363,62 +385,22 @@
 
       // OK button in preview
       $(document).on('click', '.cam-gal-ok', function() {
-          const $modal = $('#cam-gal-modal');
+        const $modal = $('#cam-gal-modal');
         const instance = $modal.data('current-instance');
+        const $okBtn = $(this);
         
         if (instance) {
-          // Create FormData to send
-          const formData = new FormData();
+          // Show loading state
+          $okBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...');
           
-          // Add images to form data
-          if (instance.multiple) {
-            // For multiple images, send as array
-            instance.images.forEach((img, index) => {
-              formData.append(`${instance.name}[]`, img);
-            });
-          } else if (instance.images.length > 0) {
-            // For single image, send as single field
-            formData.append(instance.name, instance.images[0]);
-          }
-          
-          // Add any additional data
-          formData.append('timestamp', new Date().toISOString());
-          
-          // Only proceed if we have an action URL and at least one image
-          if (instance.actionUrl && instance.images.length > 0) {
-            // Show loading state
-            const $okBtn = $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...');
-            
-            // Send AJAX request
-            $.ajax({
-              url: instance.actionUrl,
-              type: 'POST',
-              data: formData,
-              processData: false,
-              contentType: false,
-              headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-              },
-              success: function() {
-                // Handle success
-              },
-              error: function() {
-                alert('Error uploading images. Please try again.');
-              },
-              complete: function() {
-                // Close modal and clean up
-                $modal.fadeOut(300, function() {
-                  $('body').css('overflow', '');
-                  $okBtn.prop('disabled', false).text('OK');
-                });
-              }
-            });
-          } else {
-            // No action URL or no images, just close the modal
+          // Use the shared method to send images
+          instance.sendImagesToServer(function() {
+            // Close modal after API call completes
             $modal.fadeOut(300, function() {
               $('body').css('overflow', '');
+              $okBtn.prop('disabled', false).text('OK');
             });
-          }
+          });
         }
       });
 
@@ -560,6 +542,56 @@
         this.showOptions();
       } else {
         this.showPreview();
+      }
+    },
+    
+    // Method to handle API calls for sending images to server
+    sendImagesToServer: function(callback) {
+      const $modal = $('#cam-gal-modal');
+      const instance = this;
+      
+      // Create FormData to send
+      const formData = new FormData();
+      
+      // Add images to form data
+      if (instance.multiple) {
+        // For multiple images, send as array
+        instance.images.forEach((img, index) => {
+          formData.append(`${instance.name}[]`, img);
+        });
+      } else if (instance.images.length > 0) {
+        // For single image, send as single field
+        formData.append(instance.name, instance.images[0]);
+      }
+      
+      // Add any additional data
+      formData.append('timestamp', new Date().toISOString());
+      
+      // Only proceed if we have an action URL and at least one image
+      if (instance.actionUrl && instance.images.length > 0) {
+        // Send AJAX request
+        return $.ajax({
+          url: instance.actionUrl,
+          type: 'POST',
+          data: formData,
+          processData: false,
+          contentType: false,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          success: function() {
+            // Handle success
+            if (typeof callback === 'function') callback();
+          },
+          error: function() {
+            alert('Error uploading images. Please try again.');
+            if (typeof callback === 'function') callback();
+          }
+        });
+      } else {
+        // No action URL or no images, just call the callback
+        if (typeof callback === 'function') callback();
+        return $.Deferred().resolve().promise();
       }
     },
 
