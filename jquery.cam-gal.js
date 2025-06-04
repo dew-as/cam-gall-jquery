@@ -448,6 +448,12 @@
     },
 
     showPreview: function () {
+      // If no images, show options instead
+      if (this.images.length === 0) {
+        this.showOptions();
+        return;
+      }
+      
       $('#cam-gal-options').hide();
       $('#cam-gal-camera').hide();
       const $preview = $('#cam-gal-preview');
@@ -485,12 +491,6 @@
         $deleteBtn.on('click', (e) => {
           e.stopPropagation();
           this.removeImage(index);
-          // If in single image mode and no images left, go back to options
-          if (!this.multiple && this.images.length === 0) {
-            this.showOptions();
-          } else {
-            this.showPreview(); // Refresh preview
-          }
         });
       });
       
@@ -554,7 +554,13 @@
     removeImage: function (index) {
       this.images.splice(index, 1);
       this.updateInput();
-      this.showPreview();
+      
+      // If no images left, go back to options
+      if (this.images.length === 0) {
+        this.showOptions();
+      } else {
+        this.showPreview();
+      }
     },
 
     showCamera: function () {
